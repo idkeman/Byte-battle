@@ -1,116 +1,36 @@
-(() => {
-  "use strict";
-  const canvas = document.getElementById("arena");
-  const ctx = canvas.getContext("2d");
-  const $ = (id) => document.getElementById(id);
-  const unitInfo = {
-    scout: { name:"Scout", cost:25, hp:34, speed:38, damage:8, range:18, rate:.72, size:8, color:"#64b4ff", icon:"➤" },
-    tank: { name:"Tank", cost:60, hp:125, speed:13, damage:19, range:22, rate:1.25, size:12, color:"#ffc879", icon:"⬟" },
-    sniper: { name:"Sniper", cost:45, hp:25, speed:18, damage:22, range:105, rate:1.55, size:7, color:"#c7a6ff", icon:"⌖" }
-  };
-  let state, selectedUnit = "scout", lastFrame = 0, aiTimer = 2, passiveTimer = 0, spawnTimer = 0;
-  const difficulty = () => $("difficulty").value;
-  function freshState() {
-    return { bytes:100, incomeLevel:0, healthLevel:0, baseMax:100, playerBase:100, enemyBase:100, running:false, ended:false, units:[], shots:[], elapsed:0, match:1, aiBytes:0, nextId:1, teamMode:$("team-mode").checked };
-  }
-  state = freshState();
-  function log(message) {
-    const el = $("event-log"), p = document.createElement("p"), time = document.createElement("time");
-    time.textContent = new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
-    p.append(time, document.createTextNode(" " + message)); el.appendChild(p);
-    while(el.children.length > 5) el.removeChild(el.children[1]);
-  }
-  function addUnit(side, type) {
-    const d = unitInfo[type];
-    state.units.push({id:state.nextId++,side,type,x:side==="blue"?9:91,y:state.teamMode && side==="blue"?[37,50,63][Math.floor(Math.random()*3)]:50,hp:d.hp,maxHp:d.hp,attack:Math.random()*.3,walk:Math.random()*.4});
-  }
-  function deploy() {
-    if(!state.running || state.ended) return;
-    const d=unitInfo[selectedUnit];
-    if(state.bytes<d.cost){$("deploy-note").textContent="Not enough Bytes. Wait for income.";return;}
-    state.bytes-=d.cost; addUnit("blue",selectedUnit); log("Deployed "+d.name+". Squad moving out."); updateUI();
-  }
-  function upgrade(kind) {
-    if(!state.running || state.ended) return;
-    if(kind==="health") {
-      const cost=50+state.healthLevel*45;
-      if(state.bytes<cost)return;
-      state.bytes-=cost;state.healthLevel++;state.baseMax+=20;state.playerBase=Math.min(state.baseMax,state.playerBase+20);log("Core reinforced. Maximum base health increased.");
-    } else {
-      const cost=75+state.incomeLevel*60;
-      if(state.bytes<cost)return;
-      state.bytes-=cost;state.incomeLevel++;log("Byte generator upgraded. Passive income increased.");
-    }
-    updateUI();
-  }
-  function start() {
-    if(state.ended) reset();
-    state.running=true;$("arena-overlay").classList.add("hidden");$("status").textContent="Battle in progress";$("status").previousElementSibling.classList.add("active");$("start-button").textContent="Battle started";$("deploy-button").disabled=false;
-    log("Battle started. Your base is blue; destroy the red core."); updateUI();
-  }
-  function reset() {
-    state=freshState();aiTimer=2;passiveTimer=0;spawnTimer=0;$("arena-overlay").innerHTML='<div class="overlay-card"><div class="big-icon">⌁</div><p class="eyebrow">READY, COMMANDER?</p><h2>Your base is online.</h2><p>Build your squad, deploy units, and take down the enemy core.</p><button class="primary-button" id="start-button">Start battle <span>→</span></button></div>';$("arena-overlay").classList.remove("hidden");$("status").textContent="Awaiting deployment";$("status").previousElementSibling.classList.remove("active");$("start-button").innerHTML='Start battle <span>→</span>';$("deploy-button").disabled=true;$("deploy-note").textContent="Start a battle to deploy your squad.";
-    $("event-log").innerHTML='<div class="log-title">COMBAT LOG <span>LIVE FEED</span></div><p><time>BOOT</time> New simulation ready. Choose your strategy.</p>';updateUI();draw();
-  }
-  function updateUI() {
-    $("currency").textContent=Math.floor(state.bytes);$("base-health").textContent=Math.max(0,Math.ceil(state.playerBase/state.baseMax*100))+"%";
-    $("friendly-count").textContent=state.units.filter(u=>u.side==="blue").length+" units";$("enemy-count").textContent=state.units.filter(u=>u.side==="red").length+" units";$("match-number").textContent=String(state.match).padStart(2,"0");
-    $("health-level").textContent="Level "+state.healthLevel+" · "+(50+state.healthLevel*45)+" Bytes";$("income-level").textContent="Level "+state.incomeLevel+" · "+(75+state.incomeLevel*60)+" Bytes";
-    $("health-upgrade").textContent=(50+state.healthLevel*45)+" B";$("income-upgrade").textContent=(75+state.incomeLevel*60)+" B";
-    $("health-upgrade").disabled=!state.running||state.bytes<50+state.healthLevel*45;$("income-upgrade").disabled=!state.running||state.bytes<75+state.incomeLevel*60;
-    const d=unitInfo[selectedUnit];$("deploy-button").innerHTML="Deploy "+d.name+' <span>'+d.cost+' B</span>';$("deploy-button").disabled=!state.running||state.ended||state.bytes<d.cost;
-    if(state.running&&!state.ended)$("deploy-note").textContent=state.bytes<d.cost?"Waiting for Bytes...":"Click to send a "+d.name.toLowerCase()+" into battle.";
-  }
-  function finish(winner) {
-    state.ended=true;state.running=false;$("status").textContent=winner==="blue"?"Victory!":"Your base was destroyed";$("status").previousElementSibling.classList.remove("active");
-    $("arena-overlay").classList.remove("hidden");$("arena-overlay").innerHTML='<div class="overlay-card"><div class="big-icon">'+(winner==="blue"?"✦":"⌁")+'</div><p class="eyebrow">MATCH COMPLETE</p><h2>'+(winner==="blue"?"Core destroyed!":"Base offline.")+'</h2><p>'+(winner==="blue"?"You outplayed the AI and won the match.":"The enemy broke through your defenses. Try a different unit mix.")+'</p><button class="primary-button" id="start-button">Play again <span>→</span></button></div>';
-    $("start-button").addEventListener("click",reset);log(winner==="blue"?"VICTORY: Enemy core destroyed.":"DEFEAT: Your core has fallen.");updateUI();
-  }
-  function resize() {
-    const r=canvas.getBoundingClientRect(), dpr=Math.min(devicePixelRatio||1,2);
-    canvas.width=Math.round(r.width*dpr);canvas.height=Math.round(r.height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);draw();
-  }
-  function draw() {
-    const w=canvas.clientWidth||600,h=canvas.clientHeight||400;ctx.clearRect(0,0,w,h);
-    const grd=ctx.createLinearGradient(0,0,w,h);grd.addColorStop(0,"#0b1b36");grd.addColorStop(1,"#081329");ctx.fillStyle=grd;ctx.fillRect(0,0,w,h);
-    ctx.strokeStyle="#24406440";ctx.lineWidth=1;for(let x=0;x<w;x+=26){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}for(let y=0;y<h;y+=26){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}
-    ctx.fillStyle="#57a5ff0c";ctx.fillRect(0,0,w*.19,h);ctx.fillStyle="#ff6e850c";ctx.fillRect(w*.81,0,w*.19,h);
-    ctx.setLineDash([5,7]);ctx.strokeStyle="#3d587d";ctx.beginPath();ctx.moveTo(w/2,0);ctx.lineTo(w/2,h);ctx.stroke();ctx.setLineDash([]);
-    // bases
-    drawBase(w*.075,h*.5,"blue",state.playerBase/state.baseMax);drawBase(w*.925,h*.5,"red",state.enemyBase/100);
-    ctx.fillStyle="#7791b7";ctx.font="800 9px system-ui";ctx.textAlign="center";ctx.fillText("YOUR SPAWN",w*.11,h-16);ctx.fillText("ENEMY SPAWN",w*.89,h-16);
-    state.units.forEach(u=>{const x=u.x/100*w,y=u.y/100*h,d=unitInfo[u.type];ctx.save();ctx.translate(x,y);ctx.fillStyle=u.side==="blue"?"#57a5ff22":"#ff6e8522";ctx.beginPath();ctx.arc(0,0,d.size+7,0,Math.PI*2);ctx.fill();ctx.fillStyle=u.side==="blue"?d.color:"#ff7187";ctx.strokeStyle=u.side==="blue"?"#b6e2ff":"#ffd0d7";ctx.lineWidth=1.5;ctx.beginPath();if(u.type==="tank"){ctx.rect(-d.size,-d.size,d.size*2,d.size*2)}else{ctx.moveTo(d.size+2,0);ctx.lineTo(-d.size,-d.size);ctx.lineTo(-d.size,d.size);ctx.closePath()}ctx.fill();ctx.stroke();ctx.fillStyle="#26364d";ctx.fillRect(-12,-d.size-8,24,3);ctx.fillStyle=u.side==="blue"?"#64e2e5":"#ff7187";ctx.fillRect(-12,-d.size-8,24*Math.max(0,u.hp/u.maxHp),3);ctx.restore();});
-    state.shots.forEach(s=>{ctx.strokeStyle=s.side==="blue"?"#75d7ff":"#ff8d9f";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(s.x/100*w,s.y/100*h);ctx.lineTo(s.tx/100*w,s.ty/100*h);ctx.stroke();});
-    if(!state.running){ctx.fillStyle="#90a9cc";ctx.font="10px system-ui";ctx.textAlign="center";ctx.fillText("DEPLOY YOUR FIRST UNIT TO BEGIN",w/2,h*.84)}
-  }
-  function drawBase(x,y,side,hp) {
-    ctx.save();ctx.translate(x,y);ctx.fillStyle=side==="blue"?"#153a65":"#492238";ctx.strokeStyle=side==="blue"?"#5daeff":"#ff7187";ctx.lineWidth=2;
-    ctx.beginPath();ctx.roundRect(-23,-30,46,60,8);ctx.fill();ctx.stroke();ctx.fillStyle=side==="blue"?"#75c2ff":"#ff9baa";ctx.font="bold 24px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("◆",0,-2);
-    ctx.fillStyle="#18253d";ctx.fillRect(-25,39,50,5);ctx.fillStyle=side==="blue"?"#64e2e5":"#ff7187";ctx.fillRect(-25,39,50*Math.max(0,hp),5);ctx.restore();
-  }
-  function tick(dt) {
-    if(!state.running||state.ended)return;
-    state.elapsed+=dt;passiveTimer+=dt;aiTimer-=dt;spawnTimer-=dt;state.bytes+=(1+state.incomeLevel*0.65)*dt*(difficulty()==="easy"?1.25:1);
-    if(passiveTimer>=1){passiveTimer=0;state.aiBytes+=difficulty()==="hard"?8:10;}
-    if(aiTimer<=0){aiTimer=difficulty()==="easy"?4.8:difficulty()==="hard"?2.3:3.4;const roll=Math.random();addUnit("red",roll>.78?"tank":roll>.48?"sniper":"scout");}
-    if(state.teamMode&&spawnTimer<=0){spawnTimer=7;if(state.bytes>=25){state.bytes-=25;addUnit("blue","scout");log("Team support deployed a Scout.");}}
-    for(const u of state.units){const dir=u.side==="blue"?1:-1,d=unitInfo[u.type];let target=null,dist=Infinity;
-      for(const other of state.units){if(other.side===u.side)continue;const dx=other.x-u.x,dy=other.y-u.y,dd=Math.hypot(dx,dy);if(dd<dist){dist=dd;target=other}}
-      const baseDist=Math.abs((u.side==="blue"?91:9)-u.x)*wScale();
-      if(target&&dist<d.range/1.7){u.attack+=dt;if(u.attack>=d.rate){u.attack=0;target.hp-=d.damage;state.shots.push({side:u.side,x:u.x,y:u.y,tx:target.x,ty:target.y,life:.12});}}
-      else if(target&&dist<d.range/1.7+5){u.x+=dir*d.speed*dt*.1;}
-      else {const nearBase=Math.abs((u.side==="blue"?91:9)-u.x);if(nearBase<2.3){u.attack+=dt;if(u.attack>1){u.attack=0;if(u.side==="blue")state.enemyBase-=d.damage;else state.playerBase-=d.damage;}}else u.x+=dir*d.speed*dt*.1;}
-    }
-    state.units=state.units.filter(u=>u.hp>0&&u.x>-3&&u.x<103);state.shots=state.shots.filter(s=>(s.life=(s.life||.12)-dt)>0);
-    if(state.aiBytes>=55){state.aiBytes-=55;if(Math.random()>.55)addUnit("red","tank");}
-    if(state.enemyBase<=0){state.enemyBase=0;finish("blue")}else if(state.playerBase<=0){state.playerBase=0;finish("red")}
-    updateUI();
-  }
-  function wScale(){return 1}
-  function frame(ts){const dt=Math.min((ts-lastFrame)/1000||0,.05);lastFrame=ts;tick(dt);draw();requestAnimationFrame(frame)}
-  document.querySelectorAll(".unit-card").forEach(b=>b.addEventListener("click",()=>{selectedUnit=b.dataset.unit;document.querySelectorAll(".unit-card").forEach(x=>x.classList.toggle("selected",x===b));updateUI()}));
-  $("start-button").addEventListener("click",start);$("deploy-button").addEventListener("click",deploy);$("health-upgrade").addEventListener("click",()=>upgrade("health"));$("income-upgrade").addEventListener("click",()=>upgrade("income"));$("reset-button").addEventListener("click",reset);
-  $("team-mode").addEventListener("change",()=>{state.teamMode=$("team-mode").checked;});
-  window.addEventListener("resize",resize);
-  resize();updateUI();requestAnimationFrame(frame);
+(()=>{"use strict";
+const $=id=>document.getElementById(id),canvas=$("arena"),ctx=canvas.getContext("2d");
+const U={scout:{name:"Scout",cost:25,hp:42,speed:11,damage:7,range:8,rate:.72,size:7,color:"#64b4ff"},tank:{name:"Tank",cost:58,hp:150,speed:4.4,damage:17,range:7,rate:1.15,size:11,color:"#ffc879"},sniper:{name:"Sniper",cost:44,hp:29,speed:5.5,damage:18,range:21,rate:1.45,size:7,color:"#c7a6ff"},dj:{name:"DJ Zombie Cube",cost:0,hp:105,speed:6,damage:4,range:12,rate:1.1,size:12,color:"#b8ff65"}};
+const KEY="byte-battle-meta-v2",lanes=[25,50,75];let meta, state, selected="scout",last=0,aiTimer=0,allyTimer=0,laneIndex=0,lastUI=0,djUnlocked=false;
+function load(){try{return {health:0,income:0,starting:0,...JSON.parse(localStorage.getItem(KEY)||"{}")}}catch{return {health:0,income:0,starting:0}}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(meta))}catch{}}
+const mode=()=>$("mode-select").value,diff=()=>$("difficulty").value;
+function fresh(){let hp=100+meta.health*10;return {bytes:160+meta.starting*20,redBytes:160,income:meta.income,health:meta.health,max:hp,blue:hp,red:100,running:false,ended:false,units:[],shots:[],effects:[],id:1,redLane:0}}
+meta=load();
+function log(s){let el=$("event-log"),p=document.createElement("p"),t=document.createElement("time");t.textContent=new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});p.append(t,document.createTextNode(" "+s));el.append(p);while(el.children.length>5)el.removeChild(el.children[1])}
+function lane(side){if(side==="red")return lanes[state.redLane++%3];let v=$("spawn-lane").value;if(v==="top")return 25;if(v==="middle")return 50;if(v==="bottom")return 75;if(v==="random")return lanes[Math.floor(Math.random()*3)];return lanes[laneIndex++%3]}
+function add(side,type){let d=U[type],u={id:state.id++,side,type,x:side==="blue"?11:89,y:lane(side),hp:d.hp,maxHp:d.hp,attack:Math.random()*.25,stun:0};state.units.push(u);if(type==="dj"){for(let e of state.units)if(e.side!==side){e.stun=2.5;e.hp-=4}state.effects.push({x:u.x,y:u.y,r:0,life:.7,side});log("DJ ZOMBIE CUBE! Bass drop stunned enemies and dealt light damage.")}return u}
+function start(){if(state.ended)reset();state.running=true;$("arena-overlay").classList.add("hidden");$("status").textContent=mode()==="pvp"?"Local PvP in progress":"Battle in progress";$("status").previousElementSibling.classList.add("active");$("start-button").textContent="Battle started";log(mode()==="pvp"?"Local PvP: blue deploys left, red deploys right.":"Battle started. You start with 160 Bytes and generate more passively.");update()}
+function reset(){state=fresh();aiTimer=0;allyTimer=0;laneIndex=0;$("arena-overlay").innerHTML='<div class="overlay-card"><div class="big-icon">⌁</div><p class="eyebrow">READY, COMMANDER?</p><h2>Your base is online.</h2><p>You start with 160 Bytes and gain more automatically. Choose a spawn format and counter the enemy.</p><button class="primary-button" id="start-button">Start battle <span>→</span></button></div>';$("arena-overlay").classList.remove("hidden");$("status").textContent="Awaiting deployment";$("status").previousElementSibling.classList.remove("active");$("event-log").innerHTML='<div class="log-title">COMBAT LOG <span>LIVE FEED</span></div><p><time>BOOT</time> New match ready. Bytes generate automatically.</p>';$("start-button").addEventListener("click",start);update();draw()}
+function deploy(side="blue",type=selected,free=false){if(!state.running||state.ended)return false;let k=side==="blue"?"bytes":"redBytes",cost=U[type].cost;if(!free&&state[k]<cost){if(side==="blue")$("deploy-note").textContent="Not enough Bytes yet. Passive income keeps building.";return false}if(!free)state[k]-=cost;add(side,type);log((side==="blue"?"Blue":"Red")+" deployed "+U[type].name+".");update();return true}
+function formation(){let f=$("formation").value;return f==="scout-rush"?["scout","scout","scout"]:f==="armored"?["tank","scout"]:f==="sniper-line"?["sniper","sniper"]:[selected]}
+function deployFormation(){if(!state.running)return;let ts=formation(),cost=ts.reduce((n,t)=>n+U[t].cost,0);if(state.bytes<cost){$("deploy-note").textContent="Formation costs "+cost+" Bytes. Wait for passive income.";return}state.bytes-=cost;ts.forEach(t=>add("blue",t));log("Formation deployed: "+ts.map(t=>U[t].name).join(" + ")+".");update()}
+function upgrade(k){if(!state.running||state.ended)return;let cost=k==="health"?55+state.health*45:65+state.income*55;if(state.bytes<cost)return;state.bytes-=cost;if(k==="health"){state.health++;state.max+=10;state.blue=Math.min(state.max,state.blue+10);meta.health=state.health;log("Core upgrade saved between matches.")}else{state.income++;meta.income=state.income;log("Permanent Byte generator upgrade saved.")}save();update()}
+function finish(side){state.ended=true;state.running=false;let win=side==="blue";if(win){let reward=diff()==="noob"?35:diff()==="easy"?50:diff()==="hard"?25:40;state.bytes+=reward;meta.starting=Math.min(10,meta.starting+1);save();log("Victory reward: "+reward+" Bytes. Starting reserve increased for next match.")}$("status").textContent=win?"Victory!":"Base destroyed";$("status").previousElementSibling.classList.remove("active");$("arena-overlay").innerHTML='<div class="overlay-card"><div class="big-icon">'+(win?"✦":"⌁")+'</div><p class="eyebrow">MATCH COMPLETE</p><h2>'+(win?"Enemy core destroyed!":"Your base fell.")+'</h2><p>'+(win?"You earned a reward. Upgrades persist between matches.":"Passive Bytes never stop. Try Absolute Noobie and use formations to counter the AI.")+'</p><button class="primary-button" id="start-button">Play again <span>→</span></button></div>';$("arena-overlay").classList.remove("hidden");$("start-button").addEventListener("click",reset);update()}
+function update(){ $("currency").textContent=Math.floor(state.bytes);$("base-health").textContent=Math.max(0,Math.ceil(state.blue/state.max*100))+"%";$("friendly-count").textContent=state.units.filter(u=>u.side==="blue").length+" units";$("enemy-count").textContent=state.units.filter(u=>u.side==="red").length+" units";$("health-level").textContent="Level "+state.health+" · "+(55+state.health*45)+" Bytes";$("income-level").textContent="Level "+state.income+" · "+(65+state.income*55)+" Bytes";$("health-upgrade").textContent=(55+state.health*45)+" B";$("income-upgrade").textContent=(65+state.income*55)+" B";$("health-upgrade").disabled=!state.running||state.bytes<55+state.health*45;$("income-upgrade").disabled=!state.running||state.bytes<65+state.income*55;let d=U[selected];$("deploy-button").innerHTML="Deploy "+d.name+' <span>'+d.cost+' B</span>';$("deploy-button").disabled=!state.running||state.ended||state.bytes<d.cost;let fc=formation().reduce((n,t)=>n+U[t].cost,0);$("formation-button").disabled=!state.running||state.ended||state.bytes<fc;$("pvp-controls").hidden=mode()!=="pvp";$("red-deploy").disabled=!state.running||state.ended||state.redBytes<d.cost;if(state.running&&!state.ended)$("deploy-note").textContent="Passive income: "+(3+state.income*.8).toFixed(1)+" Bytes/sec"}
+function resize(){let r=canvas.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);canvas.width=Math.max(1,r.width*d);canvas.height=Math.max(1,r.height*d);ctx.setTransform(d,0,0,d,0,0);draw()}
+function base(x,y,side,hp){ctx.save();ctx.translate(x,y);ctx.fillStyle=side==="blue"?"#153a65":"#492238";ctx.strokeStyle=side==="blue"?"#5daeff":"#ff7187";ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(-23,-30,46,60,8);ctx.fill();ctx.stroke();ctx.fillStyle=side==="blue"?"#75c2ff":"#ff9baa";ctx.font="bold 24px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("◆",0,-2);ctx.fillStyle="#18253d";ctx.fillRect(-25,39,50,5);ctx.fillStyle=side==="blue"?"#64e2e5":"#ff7187";ctx.fillRect(-25,39,50*Math.max(0,hp),5);ctx.restore()}
+function draw(){let w=canvas.clientWidth||600,h=canvas.clientHeight||400;ctx.clearRect(0,0,w,h);let g=ctx.createLinearGradient(0,0,w,h);g.addColorStop(0,"#0b1b36");g.addColorStop(1,"#081329");ctx.fillStyle=g;ctx.fillRect(0,0,w,h);ctx.strokeStyle="#24406440";for(let x=0;x<w;x+=26){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke()}for(let y=0;y<h;y+=26){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke()}for(let l of lanes){ctx.setLineDash([3,9]);ctx.strokeStyle="#2a4260";ctx.beginPath();ctx.moveTo(0,l/100*h);ctx.lineTo(w,l/100*h);ctx.stroke()}ctx.setLineDash([5,7]);ctx.strokeStyle="#3d587d";ctx.beginPath();ctx.moveTo(w/2,0);ctx.lineTo(w/2,h);ctx.stroke();ctx.setLineDash([]);base(w*.075,h*.5,"blue",state.blue/state.max);base(w*.925,h*.5,"red",state.red/100);ctx.fillStyle="#7791b7";ctx.font="800 9px system-ui";ctx.textAlign="center";ctx.fillText("YOUR SPAWN",w*.11,h-16);ctx.fillText(mode()==="pvp"?"RED PLAYER":"AI SPAWN",w*.89,h-16);
+state.effects.forEach(e=>{ctx.strokeStyle="#b8ff65";ctx.lineWidth=3;ctx.globalAlpha=e.life/.7;ctx.beginPath();ctx.arc(e.x/100*w,e.y/100*h,e.r/100*w,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1});
+for(let u of state.units){let d=U[u.type],x=u.x/100*w,y=u.y/100*h;ctx.save();ctx.translate(x,y);ctx.fillStyle=u.side==="blue"?"#57a5ff22":"#ff6e8522";ctx.beginPath();ctx.arc(0,0,d.size+7,0,Math.PI*2);ctx.fill();if(u.type==="dj"){ctx.fillStyle="#9bdb4e";ctx.strokeStyle="#e7ffb5";ctx.lineWidth=2;ctx.fillRect(-11,-11,22,22);ctx.strokeRect(-11,-11,22,22);ctx.fillStyle="#14210d";ctx.fillRect(-6,-3,3,3);ctx.fillRect(3,-3,3,3);ctx.fillRect(-4,4,8,2);ctx.fillStyle="#c7ff73";ctx.font="bold 7px system-ui";ctx.fillText("DJ",0,-16)}else{ctx.fillStyle=u.side==="blue"?d.color:"#ff7187";ctx.strokeStyle=u.side==="blue"?"#b6e2ff":"#ffd0d7";ctx.lineWidth=1.5;ctx.beginPath();if(u.type==="tank")ctx.rect(-d.size,-d.size,d.size*2,d.size*2);else if(u.type==="sniper"){ctx.moveTo(0,-d.size-1);ctx.lineTo(d.size,d.size);ctx.lineTo(-d.size,d.size);ctx.closePath()}else{ctx.moveTo(d.size+2,0);ctx.lineTo(-d.size,-d.size);ctx.lineTo(-d.size,d.size);ctx.closePath()}ctx.fill();ctx.stroke()}ctx.fillStyle="#26364d";ctx.fillRect(-12,-d.size-8,24,3);ctx.fillStyle=u.side==="blue"?"#64e2e5":"#ff7187";ctx.fillRect(-12,-d.size-8,24*Math.max(0,u.hp/u.maxHp),3);if(u.stun>0){ctx.fillStyle="#ffe68b";ctx.fillText("✦",0,-d.size-13)}ctx.restore()}
+for(let s of state.shots){ctx.strokeStyle=s.side==="blue"?"#75d7ff":"#ff8d9f";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(s.x/100*w,s.y/100*h);ctx.lineTo(s.tx/100*w,s.ty/100*h);ctx.stroke()}if(!state.running){ctx.fillStyle="#90a9cc";ctx.font="10px system-ui";ctx.textAlign="center";ctx.fillText("START A MATCH · PASSIVE BYTES KEEP FLOWING",w/2,h*.84)}}
+function tick(dt){if(!state.running||state.ended)return;state.bytes+=(3+state.income*.8)*dt;if(mode()==="pvp")state.redBytes+=3*dt;aiTimer-=dt;allyTimer-=dt;let noob=diff()==="noob",easy=diff()==="easy",hard=diff()==="hard",interval=noob?11:easy?7.5:hard?3.4:5.4;
+if(mode()!=="pvp"&&aiTimer<=0){aiTimer=interval;let pool=noob?["scout"]:easy?["scout","scout","sniper"]:["scout","tank","sniper"],type=pool[Math.floor(Math.random()*pool.length)];add("red",type);if(hard&&Math.random()<.25)add("red","scout");log((noob?"Noobie AI":hard?"Hard AI":easy?"Easy AI":"AI")+" deployed "+U[type].name+".")}
+if(mode()==="teams"&&allyTimer<=0){allyTimer=8;add("blue","scout");log("Team ally sent a free Scout.")}for(let u of state.units){if(u.hp<=0)continue;u.stun=Math.max(0,u.stun-dt);if(u.stun)continue;let d=U[u.type],dir=u.side==="blue"?1:-1,target=null,best=Infinity;for(let o of state.units){if(o.side===u.side||o.hp<=0)continue;let dist=Math.hypot(o.x-u.x,(o.y-u.y)*.45);if(dist<best){best=dist;target=o}}let baseX=u.side==="blue"?92:8,engage=target&&best<d.range;if(engage){u.attack+=dt;if(u.attack>=d.rate){u.attack=0;target.hp-=d.damage;state.shots.push({side:u.side,x:u.x,y:u.y,tx:target.x,ty:target.y,life:.13})}}else if(Math.abs(baseX-u.x)<d.range*.7){u.attack+=dt;if(u.attack>=d.rate){u.attack=0;if(u.side==="blue")state.red-=d.damage;else state.blue-=d.damage;state.shots.push({side:u.side,x:u.x,y:u.y,tx:baseX,ty:50,life:.13})}}else u.x+=dir*d.speed*dt}
+state.units=state.units.filter(u=>u.hp>0&&u.x>-4&&u.x<104);state.shots=state.shots.filter(s=>(s.life-=dt)>0);state.effects=state.effects.filter(e=>{e.life-=dt;e.r+=34*dt;return e.life>0});if(state.red<=0){state.red=0;finish("blue")}else if(state.blue<=0){state.blue=0;finish("red")}if(performance.now()-lastUI>150){lastUI=performance.now();update()}}
+function frame(ts){let dt=Math.min((ts-last)/1000||0,.04);last=ts;tick(dt);draw();requestAnimationFrame(frame)}
+document.querySelectorAll(".unit-card").forEach(b=>b.addEventListener("click",()=>{selected=b.dataset.unit;document.querySelectorAll(".unit-card").forEach(x=>x.classList.toggle("selected",x===b));update()}));
+$("start-button").addEventListener("click",start);$("deploy-button").addEventListener("click",()=>deploy("blue"));$("red-deploy").addEventListener("click",()=>deploy("red"));$("formation-button").addEventListener("click",deployFormation);$("health-upgrade").addEventListener("click",()=>upgrade("health"));$("income-upgrade").addEventListener("click",()=>upgrade("income"));$("reset-button").addEventListener("click",reset);$("formation").addEventListener("change",update);$("mode-select").addEventListener("change",()=>{if(state.running)log("Mode changes apply after reset.");update()});$("spawn-lane").addEventListener("change",()=>log("Spawn placement updated."));$("difficulty").addEventListener("change",()=>log("AI difficulty set to "+$("difficulty").selectedOptions[0].text+"."));
+window.addEventListener("keydown",e=>{if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCase()==="j"){e.preventDefault();if(!state.running||state.ended){log("DJ console is available during a live match.");return}if(!djUnlocked){djUnlocked=true;log("SECRET ADMIN FEATURE UNLOCKED: DJ Zombie Cube.")}add("blue","dj");update()}});
+window.addEventListener("resize",resize);resize();update();requestAnimationFrame(frame)
 })();
