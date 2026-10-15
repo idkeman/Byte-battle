@@ -1,9 +1,9 @@
 (()=>{"use strict";
 const $=id=>document.getElementById(id),canvas=$("arena"),ctx=canvas.getContext("2d");
 const U={scout:{name:"Scout",cost:25,hp:42,speed:11,damage:7,range:8,rate:.72,size:7,color:"#64b4ff"},tank:{name:"Tank",cost:58,hp:150,speed:4.4,damage:17,range:7,rate:1.15,size:11,color:"#ffc879"},sniper:{name:"Sniper",cost:44,hp:29,speed:5.5,damage:18,range:21,rate:1.45,size:7,color:"#c7a6ff"},dj:{name:"DJ Zombie Cube",cost:0,hp:105,speed:6,damage:4,range:12,rate:1.1,size:12,color:"#b8ff65"}};
-const KEY="byte-battle-meta-v2",lanes=[25,50,75];let meta, state, selected="scout",last=0,aiTimer=0,allyTimer=0,laneIndex=0,lastUI=0,djUnlocked=false;
-function load(){try{return {health:0,income:0,starting:0,...JSON.parse(localStorage.getItem(KEY)||"{}")}}catch{return {health:0,income:0,starting:0}}}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(meta))}catch{}}
+const KEY=()=>"byte-battle-meta-v2:"+(window.LoginSystem?.user?.id||"guest"),lanes=[25,50,75];let meta, state, selected="scout",last=0,aiTimer=0,allyTimer=0,laneIndex=0,lastUI=0,djUnlocked=false;
+function load(){try{return {health:0,income:0,starting:0,...JSON.parse(localStorage.getItem(KEY())||"{}")}}catch{return {health:0,income:0,starting:0}}}
+function save(){try{localStorage.setItem(KEY(),JSON.stringify(meta))}catch{}}
 const mode=()=>$("mode-select").value,diff=()=>$("difficulty").value;
 function fresh(){let hp=100+meta.health*10;return {bytes:160+meta.starting*20,redBytes:160,income:meta.income,health:meta.health,max:hp,blue:hp,red:100,running:false,ended:false,units:[],shots:[],effects:[],id:1,redLane:0}}
 meta=load();
@@ -32,5 +32,5 @@ function frame(ts){let dt=Math.min((ts-last)/1000||0,.04);last=ts;tick(dt);draw(
 document.querySelectorAll(".unit-card").forEach(b=>b.addEventListener("click",()=>{selected=b.dataset.unit;document.querySelectorAll(".unit-card").forEach(x=>x.classList.toggle("selected",x===b));update()}));
 $("start-button").addEventListener("click",start);$("deploy-button").addEventListener("click",()=>deploy("blue"));$("red-deploy").addEventListener("click",()=>deploy("red"));$("formation-button").addEventListener("click",deployFormation);$("health-upgrade").addEventListener("click",()=>upgrade("health"));$("income-upgrade").addEventListener("click",()=>upgrade("income"));$("reset-button").addEventListener("click",reset);$("formation").addEventListener("change",update);$("mode-select").addEventListener("change",()=>{if(state.running)log("Mode changes apply after reset.");update()});$("spawn-lane").addEventListener("change",()=>log("Spawn placement updated."));$("difficulty").addEventListener("change",()=>log("AI difficulty set to "+$("difficulty").selectedOptions[0].text+"."));
 window.addEventListener("keydown",e=>{if(e.ctrlKey&&e.shiftKey&&e.key.toLowerCase()==="j"){e.preventDefault();if(!state.running||state.ended){log("DJ console is available during a live match.");return}if(!djUnlocked){djUnlocked=true;log("SECRET ADMIN FEATURE UNLOCKED: DJ Zombie Cube.")}add("blue","dj");update()}});
-window.addEventListener("resize",resize);resize();update();requestAnimationFrame(frame)
+window.addEventListener("login-state",e=>{if(!state.running){meta=load();state=fresh();update();draw()}});window.addEventListener("resize",resize);resize();update();requestAnimationFrame(frame)
 })();
