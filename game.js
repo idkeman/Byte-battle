@@ -49,7 +49,7 @@
     log("Battle started. Your base is blue; destroy the red core."); updateUI();
   }
   function reset() {
-    state=freshState();aiTimer=2;passiveTimer=0;spawnTimer=0;$("arena-overlay").classList.remove("hidden");$("status").textContent="Awaiting deployment";$("status").previousElementSibling.classList.remove("active");$("start-button").innerHTML='Start battle <span>→</span>';$("deploy-button").disabled=true;$("deploy-note").textContent="Start a battle to deploy your squad.";
+    state=freshState();aiTimer=2;passiveTimer=0;spawnTimer=0;$("arena-overlay").innerHTML='<div class="overlay-card"><div class="big-icon">⌁</div><p class="eyebrow">READY, COMMANDER?</p><h2>Your base is online.</h2><p>Build your squad, deploy units, and take down the enemy core.</p><button class="primary-button" id="start-button">Start battle <span>→</span></button></div>';$("arena-overlay").classList.remove("hidden");$("status").textContent="Awaiting deployment";$("status").previousElementSibling.classList.remove("active");$("start-button").innerHTML='Start battle <span>→</span>';$("deploy-button").disabled=true;$("deploy-note").textContent="Start a battle to deploy your squad.";
     $("event-log").innerHTML='<div class="log-title">COMBAT LOG <span>LIVE FEED</span></div><p><time>BOOT</time> New simulation ready. Choose your strategy.</p>';updateUI();draw();
   }
   function updateUI() {
