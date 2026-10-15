@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#071126">
+  <title>Byte Battle</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./"><span class="brand-mark">B</span><span>BYTE<span class="accent"> BATTLE</span><small>BUILD. DEPLOY. CONQUER.</small></span></a>
+    <div class="top-stats"><div><span class="stat-label">YOUR BYTES</span><strong id="currency">100</strong></div><div><span class="stat-label">YOUR BASE</span><strong id="base-health">100%</strong></div></div>
+  </header>
+  <main class="layout">
+    <section class="battle-column">
+      <div class="section-heading"><div><p class="eyebrow">LIVE SIMULATION</p><h1>Battlefield</h1></div><div class="match-state"><span class="live-dot"></span><span id="status">Awaiting deployment</span></div></div>
+      <div class="arena-wrap"><canvas id="arena" aria-label="Byte Battle battlefield"></canvas><div class="arena-overlay" id="arena-overlay"><div class="overlay-card"><div class="big-icon">⌁</div><p class="eyebrow">READY, COMMANDER?</p><h2>Your base is online.</h2><p>Build your squad, deploy units, and take down the enemy core.</p><button class="primary-button" id="start-button">Start battle <span>→</span></button></div></div></div>
+      <div class="battle-footer"><div><span class="legend blue"></span> YOUR TEAM <strong id="friendly-count">0 units</strong></div><div><span class="legend red"></span> ENEMY TEAM <strong id="enemy-count">0 units</strong></div><div class="wave-label">MATCH <strong id="match-number">01</strong></div></div>
+      <div class="event-log" id="event-log"><div class="log-title">COMBAT LOG <span>LIVE FEED</span></div><p><time>BOOT</time> Byte Battle system initialized. Choose your strategy.</p></div>
+    </section>
+    <aside class="control-column">
+      <section class="panel"><div class="panel-title"><div><p class="eyebrow">COMMAND CENTER</p><h2>Deploy units</h2></div><span class="panel-icon">⌘</span></div><p class="muted">Spend Bytes to send units from your spawn zone toward the enemy base.</p><div class="unit-list">
+        <button class="unit-card selected" data-unit="scout"><span class="unit-art scout-art">➤</span><span class="unit-info"><strong>Scout</strong><small>Fast · Light damage</small><em>Quick pressure unit</em></span><span class="unit-price">25 <small>BYTES</small></span></button>
+        <button class="unit-card" data-unit="tank"><span class="unit-art tank-art">⬟</span><span class="unit-info"><strong>Tank</strong><small>Slow · Heavy armor</small><em>Soaks up damage</em></span><span class="unit-price">60 <small>BYTES</small></span></button>
+        <button class="unit-card" data-unit="sniper"><span class="unit-art sniper-art">⌖</span><span class="unit-info"><strong>Sniper</strong><small>Long range · High damage</small><em>Fragile ranged attacker</em></span><span class="unit-price">45 <small>BYTES</small></span></button>
+      </div><button class="primary-button full" id="deploy-button" disabled>Deploy Scout <span>25 B</span></button><p class="small-note" id="deploy-note">Start a battle to deploy your squad.</p></section>
+      <section class="panel upgrade-panel"><div class="panel-title"><div><p class="eyebrow">PERMANENT STRATEGY</p><h2>Core upgrades</h2></div><span class="panel-icon">↗</span></div><div class="upgrade-row"><div class="upgrade-symbol">✚</div><div class="upgrade-info"><strong>Reinforced core</strong><small>Increase base health by 20</small><span id="health-level">Level 0 · 50 Bytes</span></div><button class="upgrade-button" id="health-upgrade">50 B</button></div><div class="upgrade-row"><div class="upgrade-symbol">ϟ</div><div class="upgrade-info"><strong>Byte generator</strong><small>Earn Bytes faster</small><span id="income-level">Level 0 · 75 Bytes</span></div><button class="upgrade-button" id="income-upgrade">75 B</button></div></section>
+      <section class="panel settings-panel"><div class="panel-title"><div><p class="eyebrow">MATCH SETTINGS</p><h2>Battle rules</h2></div></div><label for="difficulty">AI difficulty</label><select id="difficulty"><option value="easy">Easy · More Bytes</option><option value="normal" selected>Normal</option><option value="hard">Hard · Less room</option></select><label class="toggle-row"><span><strong>Team battle</strong><small>Fight alongside two allied units</small></span><input type="checkbox" id="team-mode"></label><button class="secondary-button full" id="reset-button">Reset match</button></section>
+    </aside>
+  </main>
+  <footer>BYTE BATTLE <span>·</span> A tiny strategy game by Daimen <span>·</span> Progress resets when you refresh.</footer>
+  <script src="game.js"></script>
+</body>
+</html>
