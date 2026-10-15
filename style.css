@@ -5,3 +5,12 @@
 .pvp-controls[hidden]{display:none}
 #red-deploy{border-color:#754155;color:#ffc0cb;background:#2a1829}
 @media(max-width:900px){.control-column .spawn-panel{grid-row:auto}}
+
+.top-stats{gap:18px}.account-chip{border:1px solid #31517d;background:#102342;color:#cfe8ff;border-radius:9px;padding:9px 12px;font:700 11px system-ui;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+.account-panel input,.multiplayer-panel input{width:100%;min-width:0;background:#081429;border:1px solid #294064;color:var(--text);border-radius:8px;padding:10px;font:inherit;font-size:12px;margin:4px 0 8px}
+.account-panel label,.multiplayer-panel label{display:block;font-size:10px;color:#9aaccb;margin:9px 0 4px}
+.account-actions,.room-buttons,.room-share{display:flex;gap:8px;align-items:center}.account-actions>* ,.room-buttons>*{flex:1;min-width:0}.room-share input{flex:1}.room-share button{flex-shrink:0}
+.auth-fields{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}.auth-mini-actions{display:flex;justify-content:flex-end}.text-button{border:0;background:transparent;color:#8fc7ff;text-decoration:underline;cursor:pointer;padding:5px}
+.error-text{color:#ff8e9e!important}.room-members{display:grid;gap:5px;margin:10px 0}.room-member{padding:7px 9px;background:#0a1730;border:1px solid #1d3157;border-radius:7px;color:#c9dcf7;font-size:11px}
+.room-chat{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}.room-chat-log{height:100px;overflow:auto;background:#081429;border:1px solid #1d3157;border-radius:8px;padding:7px;margin-bottom:8px;font-size:11px;color:#c5d8f5}.room-chat-log p{margin:3px 0;overflow-wrap:anywhere}.account-panel [hidden],.multiplayer-panel [hidden]{display:none!important}
+@media(max-width:760px){.top-stats{gap:8px}.account-chip{max-width:105px;padding:7px;font-size:10px}.room-buttons{flex-direction:column}.room-buttons>*{width:100%}}
